@@ -1,0 +1,11 @@
+{
+  "_comment": "EXAMPLE ONLY — the real map is injected at runtime from the PR_REVIEW_REVIEWERS org secret (never committed). GitHub login -> Slack identity; only slack_id + name are read. See README 'Updating reviewers'.",
+  "octocat": {
+    "slack_id": "U000EXAMPLE0",
+    "name": "Octo"
+  },
+  "hubot": {
+    "slack_id": "U000EXAMPLE1",
+    "name": "Hubot"
+  }
+}

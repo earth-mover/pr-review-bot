@@ -1,0 +1,52 @@
+name: PR Review Board
+description: Sync a repo's open PRs to a ball-in-court Slack List board.
+inputs:
+  channel:
+    description: Slack channel id the board lives in.
+    required: true
+  board-name:
+    description: Title of the Slack List (e.g. "Arraylake PR Board").
+    required: true
+  bot-actors:
+    description: Comma-separated logins whose reviews/comments are ignored (bots/CI).
+    required: false
+    default: "dependabot,app/dependabot,github-actions,codecov,sonarcloud,vercel,pulumi,claude,claude[bot]"
+  slack-token:
+    description: Slack bot token (chat:write, channels:read, lists:read, lists:write).
+    required: true
+  claude-token:
+    description: CLAUDE_CODE_OAUTH_TOKEN for the thread-reader.
+    required: true
+  gh-token:
+    description: Token with read access to this repo's PRs (the caller's GITHUB_TOKEN).
+    required: true
+  reviewers:
+    description: GitHub login -> Slack identity JSON map (from the PR_REVIEW_REVIEWERS org secret).
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        node-version: "24"
+    - name: Install Claude Code CLI
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
+    - name: Run bot
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh-token }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack-token }}
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude-token }}
+        REVIEWERS_JSON: ${{ inputs.reviewers }}
+        BOARD_REPO: ${{ github.repository }}
+        BOARD_CHANNEL: ${{ inputs.channel }}
+        BOARD_NAME: ${{ inputs.board-name }}
+        BOARD_ACTORS: ${{ inputs.bot-actors }}
+      run: |
+        printf '%s' "$REVIEWERS_JSON" > "$RUNNER_TEMP/reviewers.json"
+        python3 -c "import json,os; print(json.dumps({'repo':os.environ['BOARD_REPO'],'channel_id':os.environ['BOARD_CHANNEL'],'board_name':os.environ['BOARD_NAME'],'bot_actors':[a.strip() for a in os.environ['BOARD_ACTORS'].split(',') if a.strip()]}))" > "$RUNNER_TEMP/config.json"
+        uv run --quiet "${{ github.action_path }}/bot.py" \
+          --config "$RUNNER_TEMP/config.json" \
+          --reviewers "$RUNNER_TEMP/reviewers.json"
