@@ -82,6 +82,11 @@ no tools, no MCP servers, no settings files and no GitHub or Slack token in its 
 a hidden `ctx` column; an unchanged PR reuses the stored verdict and Claude is only re-consulted
 when the PR actually gets new activity. Most runs make zero Claude calls.
 
+**Linked titles.** Slack shows a link in a list's primary column as plain text. So the primary `#`
+column holds only the PR number, and the `PR` text column next to it holds the title as the link.
+A board made before this column existed needs it added once in Slack: add a text column named
+`PR`. Until then the bot keeps writing the linked title to the primary column.
+
 ## Layout
 
 | Path | Purpose |

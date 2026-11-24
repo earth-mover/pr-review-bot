@@ -472,8 +472,10 @@ LIST_STATUS_CHOICES = [
     {"value": "author", "label": "🟦 Author", "color": "blue"},
     {"value": "ready", "label": "✅ Ready", "color": "green"},
 ]
+PR_COLUMN_NAME = "PR"
 LIST_SCHEMA = [
-    {"key": "title", "name": "PR", "type": "text", "is_primary_column": True},
+    {"key": "title", "name": "#", "type": "text", "is_primary_column": True},
+    {"key": "pr", "name": PR_COLUMN_NAME, "type": "text"},
     {"key": "assignee", "name": "Whose court", "type": "user", "options": {"format": "multi_entity", "show_member_name": True}},
     {
         "key": "status",
@@ -512,8 +514,16 @@ def _abandonment(hours: float) -> int:
 
 
 def _list_fields(v: Verdict, cols: dict[str, str], reviewers: dict[str, Reviewer]) -> list[dict[str, Any]]:
+    # Slack shows a link in the primary column as plain text, so the linked title goes in its own column.
+    if "pr" in cols:
+        title_cells = [
+            {"column_id": cols["title"], "rich_text": _rich(f"#{v.pr.number}")},
+            {"column_id": cols["pr"], "rich_text": _rich_link(v.pr.url, _truncate(v.pr.title, 72))},
+        ]
+    else:
+        title_cells = [{"column_id": cols["title"], "rich_text": _rich_link(v.pr.url, f"#{v.pr.number} {_truncate(v.pr.title, 72)}")}]
     fields = [
-        {"column_id": cols["title"], "rich_text": _rich_link(v.pr.url, f"#{v.pr.number} {_truncate(v.pr.title, 72)}")},
+        *title_cells,
         {"column_id": cols["status"], "select": [v.court]},
         {"column_id": cols["since"], "date": [v.since.strftime("%Y-%m-%d")]},
         {"column_id": cols["next_move"], "rich_text": _rich(v.next_move)},
@@ -548,7 +558,13 @@ def list_find(name: str, channel: str, token: str) -> list[str]:
 
 
 def _schema_cols(schema: list[dict[str, Any]]) -> dict[str, str]:
-    return {c["key"]: c["id"] for c in schema if c.get("key") and c.get("id")}
+    cols = {c["key"]: c["id"] for c in schema if c.get("key") and c.get("id")}
+    # A column added to an existing board in the Slack UI gets a generated key, so match it by name.
+    if "pr" not in cols:
+        by_name = [c["id"] for c in schema if c.get("name") == PR_COLUMN_NAME and c.get("id") and c["id"] != cols.get("title")]
+        if by_name:
+            cols["pr"] = by_name[0]
+    return cols
 
 
 def list_columns(list_id: str, token: str) -> dict[str, str]:
