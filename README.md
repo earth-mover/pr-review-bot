@@ -74,6 +74,10 @@ A heuristic (last-mover-wins) computes the base verdict — court, time-in-court
 to the heuristic on any error. When several reviewers are requested (the "assign a few, hope one
 bites" pattern), the board lists all of them until someone reviews, then narrows to whoever did.
 
+The thread-reader is a plain text completion. PR comments are untrusted input, so the CLI runs with
+no tools, no MCP servers, no settings files and no GitHub or Slack token in its environment. The
+`model` input selects the model (default `claude-opus-5-5`).
+
 **Stable verdicts.** Claude's wording drifts run-to-run, so a hash of its exact input is stored in
 a hidden `ctx` column; an unchanged PR reuses the stored verdict and Claude is only re-consulted
 when the PR actually gets new activity. Most runs make zero Claude calls.

@@ -357,12 +357,25 @@ def build_llm_prompt(verdicts: list[Verdict], reviewers: dict[str, Reviewer]) ->
     )
 
 
+CLAUDE_ENV_KEYS = ("PATH", "HOME", "TMPDIR", "LANG", "CLAUDE_CODE_OAUTH_TOKEN")
+
+
 def _llm_call(prompt: str, cfg: Config) -> str:
-    """Shell out to the Claude Code CLI with project MCP/settings disabled so it starts fast."""
-    cmd = ["claude", "-p", prompt, "--output-format", "text", "--strict-mcp-config"]
+    """Shell out to the Claude Code CLI as a plain text completion: no tools, MCP, settings or commands."""
+    cmd = [
+        "claude", "-p", prompt,
+        "--output-format", "text",
+        "--tools", "",
+        "--strict-mcp-config",
+        "--setting-sources", "",
+        "--disable-slash-commands",
+        "--no-session-persistence",
+    ]  # fmt: skip
     if cfg.llm_model:
         cmd += ["--model", cfg.llm_model]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=240, cwd=tempfile.gettempdir())
+    # The prompt carries untrusted PR comments, so the CLI never sees the GitHub or Slack tokens.
+    env = {k: os.environ[k] for k in CLAUDE_ENV_KEYS if k in os.environ}
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=240, cwd=tempfile.gettempdir(), env=env, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise RuntimeError(f"claude cli failed: {proc.stderr.strip()[:300]}")
     return proc.stdout
@@ -400,7 +413,7 @@ def apply_llm(verdicts: list[Verdict], cfg: Config, reviewers: dict[str, Reviewe
             party = (v.pr.author,)
         else:
             party = ()
-        out.append(replace(v, court=court, party=party, next_move=d.get("next_move", v.next_move), source="claude"))
+        out.append(replace(v, court=court, party=party, next_move=_truncate(str(d.get("next_move") or v.next_move), 80), source="claude"))
     return out
 
 
