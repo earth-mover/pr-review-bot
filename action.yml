@@ -23,6 +23,10 @@ inputs:
   reviewers:
     description: GitHub login -> Slack identity JSON map (from the PR_REVIEW_REVIEWERS org secret).
     required: true
+  model:
+    description: Claude model the thread-reader uses.
+    required: false
+    default: "claude-opus-5-5"
 runs:
   using: composite
   steps:
@@ -32,7 +36,7 @@ runs:
         node-version: "24"
     - name: Install Claude Code CLI
       shell: bash
-      run: npm install -g @anthropic-ai/claude-code
+      run: npm install -g @anthropic-ai/claude-code@2.1.331
     - name: Run bot
       shell: bash
       env:
@@ -44,9 +48,10 @@ runs:
         BOARD_CHANNEL: ${{ inputs.channel }}
         BOARD_NAME: ${{ inputs.board-name }}
         BOARD_ACTORS: ${{ inputs.bot-actors }}
+        BOARD_MODEL: ${{ inputs.model }}
       run: |
         printf '%s' "$REVIEWERS_JSON" > "$RUNNER_TEMP/reviewers.json"
-        python3 -c "import json,os; print(json.dumps({'repo':os.environ['BOARD_REPO'],'channel_id':os.environ['BOARD_CHANNEL'],'board_name':os.environ['BOARD_NAME'],'bot_actors':[a.strip() for a in os.environ['BOARD_ACTORS'].split(',') if a.strip()]}))" > "$RUNNER_TEMP/config.json"
+        python3 -c "import json,os; print(json.dumps({'repo':os.environ['BOARD_REPO'],'channel_id':os.environ['BOARD_CHANNEL'],'board_name':os.environ['BOARD_NAME'],'bot_actors':[a.strip() for a in os.environ['BOARD_ACTORS'].split(',') if a.strip()],'llm':{'model':os.environ['BOARD_MODEL']}}))" > "$RUNNER_TEMP/config.json"
         uv run --quiet "${{ github.action_path }}/bot.py" \
           --config "$RUNNER_TEMP/config.json" \
           --reviewers "$RUNNER_TEMP/reviewers.json"
