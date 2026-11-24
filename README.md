@@ -84,8 +84,10 @@ when the PR actually gets new activity. Most runs make zero Claude calls.
 
 **Linked titles.** Slack shows a link in a list's primary column as plain text. So the primary `#`
 column holds only the PR number, and the `PR` text column next to it holds the title as the link.
-A board made before this column existed needs it added once in Slack: add a text column named
-`PR`. Until then the bot keeps writing the linked title to the primary column.
+
+**Schema changes.** The Slack API cannot add a column to a list. When a board lacks a column that
+the schema in `bot.py` has, the bot deletes the board and makes a new one. The new board has a new
+id, so stars and saved links to the old board stop working, and column widths reset.
 
 ## Layout
 
